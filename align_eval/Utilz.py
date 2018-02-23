@@ -31,7 +31,7 @@ def get_duration_audio(filename):
         return duration
 
 
-def load_labeled_intervals(filename, delimiter=r'\s+'):
+def load_labeled_intervals(filename,filename_wav, delimiter=r'\s+'):
     '''
     overwrites https://github.com/craffel/mir_eval/blob/master/mir_eval/io.py#L208
     in order to be able to change the converters arguments of load_delimieted  to handle , instead of . in floating point vals 
@@ -43,14 +43,19 @@ def load_labeled_intervals(filename, delimiter=r'\s+'):
         starts, ends, labels = load_delimited(filename, [converter_comma, converter_comma, str],
                                           delimiter)
     except Exception, e: # only start times given
-        starts,  labels = load_delimited(filename, [converter_comma, str],
+        labels, starts   = load_delimited(filename, [str, converter_comma],
                                           delimiter)
-        filename_wav = filename[:-9] +'.wav'  # remove .refs.lab and replace it with .wav. TODO make this logic clearer 
-        if os.path.isfile(filename_wav):
-            duration = get_duration_audio(filename_wav) # generate end timestamps from following start timestamps
-        else:
-            duration = starts[-1] + 1 # fake last word to be 1 sec long
-        ends = starts[1:]; ends.append(duration) 
+    
+    starts,  labels = remove_dot_tokens(starts,  labels)
+    
+#     filename_wav = filename[:-9] +'.wav'  # remove .refs.lab and replace it with .wav. TODO make this logic clearer 
+#     filename_base =os.path.splitext(filename)[0]
+#     filename_wav = filename_base + '.wav'
+    if os.path.isfile(filename_wav):
+        duration = get_duration_audio(filename_wav) # generate end timestamps from following start timestamps
+    else:
+        duration = starts[-1] + 1 # fake last word to be 1 sec long
+    ends = starts[1:]; ends = np.append(ends, duration) 
     # Stack into an interval matrix
     intervals = np.array([starts, ends]).T
     # Validate them, but throw a warning in place of an error
@@ -61,6 +66,14 @@ def load_labeled_intervals(filename, delimiter=r'\s+'):
 
     return intervals, labels
 
+def remove_dot_tokens(starts,  labels):
+    starts_no_dots = []
+    labels_no_dots = []
+    for start_label in zip(starts, labels):
+        if start_label[1] != '.' and start_label[1] != -1:
+            starts_no_dots.append(start_label[0])
+            labels_no_dots.append(start_label[1])
+    return np.array(starts_no_dots), labels_no_dots
 
 def loadTextFile( pathToFile):
         '''

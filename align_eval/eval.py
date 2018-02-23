@@ -21,17 +21,17 @@ from align_eval.ErrorEvaluator import _evalAlignmentError
 
 
 
-def eval_all_metrics_lab(refs_URI, detected_URI):
+def eval_all_metrics_lab(refs_URI, detected_URI, filename_wav):
     '''
     run all eval metrics on one file
     '''
-    ref_intervals, ref_labels = load_labeled_intervals(refs_URI)
-    detected_intervals, detected_labels = load_labeled_intervals(detected_URI)
+    ref_intervals, ref_labels = load_labeled_intervals(refs_URI, filename_wav)
+    detected_intervals, detected_labels = load_labeled_intervals(detected_URI, filename_wav)
     
     alignmentErrors = _evalAlignmentError(ref_intervals, detected_intervals, tierAliases.phrases, ref_labels)
     mean, stDev, median = getMeanAndStDevError(alignmentErrors)
-#     print "Alignment error mean : ", mean, "Alignment error st. dev: " , stDev
-    
+#     print "Alignment error mean : ", mean, "Alignment error median : ", median, "Alignment error st. dev: " , stDev
+    print "Alignment error mean", median
     ###### percentage correct
     initialTimeOffset_refs = ref_intervals[0][0]
     finalts_refs = ref_intervals[-1][1]
@@ -42,13 +42,13 @@ def eval_all_metrics_lab(refs_URI, detected_URI):
 
 
 def main_eval_one_file(argv):
-    if len(argv) != 3:
-        sys.exit('usage: {} <path to reference word boundaries> <path to detected word boundaries> '.format(sys.argv[0]))
+    if len(argv) != 4:
+        sys.exit('usage: {} <URI reference word boundaries> <URI detected word boundaries> <wav> '.format(sys.argv[0]))
     refs_URI = argv[1]
     detected_URI = argv[2]
-    
+    filename_wav = argv[3]
     print 'evaluating on {}'.format(refs_URI) 
-    meanError, percentage = eval_all_metrics_lab(refs_URI, detected_URI)
+    meanError, percentage = eval_all_metrics_lab(refs_URI, detected_URI, filename_wav)
     return meanError, percentage
 
 def main_eval_all_files(argv):
