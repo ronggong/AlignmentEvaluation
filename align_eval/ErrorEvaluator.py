@@ -107,7 +107,7 @@ def evalAlignmentError(annotationURI, detectedURI, whichLevel, startIdx, endIdx 
     
     annotation_Token_List_NoPauses, detected_Token_List_noPauses, dummy, dummy, dummyInitialiTimeOffset = stripNonLyricsTokens(annotationURI, detectedTokenList, whichLevel, startIdx, endIdx)
 
-    evalErrors = _evalAlignmentError(annotation_Token_List_NoPauses, detected_Token_List_noPauses, whichLevel )
+    evalErrors = _evalAlignmentError(annotation_Token_List_NoPauses, detected_Token_List_noPauses)
     return evalErrors
 
 
@@ -171,8 +171,7 @@ def split_into_tokens(annotation_tokens):
 
 
 
-
-def _evalAlignmentError(reference_token_list, detected_Token_List, whichLevel, reference_labels=None, use_end_ts=False):
+def _evalAlignmentError(reference_token_list, detected_Token_List, reference_labels=None, tolerance  = 1, use_end_ts=False):
     '''
     Calculate alignment errors. Does not check token identities, but proceeds successively one-by-one  
     Make sure number of detected tokens (wihtout counting sp, sil ) is same as number of annotated tokens 
@@ -183,6 +182,7 @@ def _evalAlignmentError(reference_token_list, detected_Token_List, whichLevel, r
     alignmentErrors = []
     currAnnoTsAndToken, num_tokens_in_phrase = check_num_tokens(reference_token_list, detected_Token_List, reference_labels)
     
+    count_tolerated_tokens = 0 
     current_num_tokens = 0
     # evaluate: loop in tokens of gr truth reference annotation
     for idx, currAnnoTsAndToken in enumerate(reference_token_list):
@@ -195,15 +195,13 @@ def _evalAlignmentError(reference_token_list, detected_Token_List, whichLevel, r
             
         
         beginAlignmentError, endAlignmentError = calcErrorBeginAndEndTs(detected_Token_List, currAnnoTsAndToken, current_num_tokens, num_tokens_in_phrase[idx])        
-        
-        
         alignmentErrors.append(beginAlignmentError)
+             
         if use_end_ts: # end timestamp of each token considered, too. this makes sense when inter-word silences/instrumentals are present   
             alignmentErrors.append(endAlignmentError)
         
         #### UPDATE: proceed in detection the number of subtokens in current token          
         current_num_tokens += num_tokens_in_phrase[idx]
-    
                
     return  alignmentErrors
 
@@ -301,10 +299,22 @@ def calcError(annotatedTokenTs, detectedTokenTs):
     currAlignmentError = numpy.round(currAlignmentError, decimals=2)
     return currAlignmentError      
     
-
+def calc_percentage_tolerance(alignmentErrors, tolerance):
+    '''
+    code for tolerance metric according to implementation used in the paper
+     Chang, Lee - "Lyrics-to-Audio Alignment by Unsupervised Discovery of Repetitive Patterns in Vowel Acoustics"
+    '''
+    count_tolerated_tokens = 0
+    for error in alignmentErrors:
+            if abs(error) <= tolerance:
+                    count_tolerated_tokens += 1
+    percantage_tolerance = (float(count_tolerated_tokens)/float( len(alignmentErrors) ) ) * 100
+    return percantage_tolerance
 
 def evalOneFile(argv):
-        ''' Main utility function
+        ''' 
+        Main utility function
+        @deprecated: 
         ''' 
        
         if len(argv) != 5:

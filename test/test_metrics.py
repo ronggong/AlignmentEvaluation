@@ -5,7 +5,9 @@ Created on Jun 30, 2015
 '''
 import sys
 import os
-from align_eval.Utilz import getMeanAndStDevError, load_labeled_intervals
+from align_eval.Utilz import getMeanAndStDevError, load_labeled_intervals,\
+    load_delimited_variants
+from align_eval.eval import load_detected_intervals
 project_dir = os.path.join(os.path.dirname(__file__), '..')
 if project_dir not in sys.path:
     sys.path.append(project_dir)
@@ -36,7 +38,7 @@ PATH_TEST_DATASET = os.path.join(project_dir, 'example/')
 #      
     ############### 2  example with detected tsv file
 
-def evalPercentageCorrect_lab_test():
+def test_eval_PercentageCorrect_lab():
     '''
     test the percentage of duration of correctly aligned tokens with loading the .lab files 
     '''
@@ -52,18 +54,18 @@ def evalPercentageCorrect_lab_test():
 
 
 
-def evalError_lab_test():
+def test_evalError_lab():
     '''
     test mean average error/displacement (in seconds) of alignment with loading the .lab files 
     '''
     
     ref_intervals, detected_intervals, ref_labels = load_ref_and_detections()
 
-    alignmentErrors = _evalAlignmentError(ref_intervals, detected_intervals, tierAliases.phrases, ref_labels)
+    alignmentErrors = _evalAlignmentError(ref_intervals, detected_intervals, ref_labels)
     mean, stDev, median = getMeanAndStDevError(alignmentErrors)
     print "Alignment error mean : ", mean, "Alignment error st. dev: " , stDev
     
-def evalAccuracy_lab_test():
+def test_eval_Accuracy_lab():
     '''
     test the accuracy of tokens with a tolerance window tau loading the .lab files 
     '''
@@ -95,15 +97,16 @@ def load_ref_and_detections():
 #     detected_URI = os.path.join(PATH_TEST_DATASET, 'words.onsets.detected.lab')
     
     ############ for Hansen's dataset
-    refs_URI = os.path.join(PATH_TEST_DATASET, 'umbrella_words.refs.lab') # for Hansen's dataset
-    detected_URI = os.path.join(PATH_TEST_DATASET, 'umbrella_words.refs.lab') # as if reference were detections
+    refs_URI = os.path.join(PATH_TEST_DATASET, 'umbrella.words.refs.lab') # for Hansen's dataset
+    detected_URI = os.path.join(PATH_TEST_DATASET, 'umbrella.words.refs.lab') # as if reference were detections
     
     ############ for Mauch's dataset
 #     refs_URI = os.path.join(PATH_TEST_DATASET, 'Muse.GuidingLight.refs.lab') 
 #     detected_URI = os.path.join(PATH_TEST_DATASET, 'Muse.GuidingLight.refs.lab') # as if reference were detections
     
     ref_intervals, ref_labels = load_labeled_intervals(refs_URI)
-    detected_intervals, detected_labels = load_labeled_intervals(detected_URI)
+    detected_intervals, use_end_ts = load_detected_intervals(detected_URI)
+    
     
     return ref_intervals, detected_intervals, ref_labels
     
@@ -148,7 +151,7 @@ def eval_error_textGrid_test():
     annotationTokenList, detected_token_list, dummy, dummy = \
      stripNonLyricsTokens(annotationURI, detected_token_list, tierAliases.phrases , startIndex, endIndex)
      
-    alignmentErrors = _evalAlignmentError(annotationTokenList, detected_token_list, tierAliases.phrases)
+    alignmentErrors = _evalAlignmentError(annotationTokenList, detected_token_list)
     mean, stDev, median = getMeanAndStDevError(alignmentErrors)
     print "mean : ", mean, "st dev: " , stDev
 
@@ -156,13 +159,13 @@ def eval_error_textGrid_test():
 if __name__ == '__main__':
 # test alignment error
 #     eval_error_textGrid_test()
-    evalError_lab_test()
+    test_evalError_lab()
 
 
 # test percentage of correct segments
 #     evalPercentageCorrect_TextGird_test()    
-    evalPercentageCorrect_lab_test()
+    test_eval_PercentageCorrect_lab()
     
 # test accuracy with tolerance t = 1s
 
-    evalAccuracy_lab_test()
+    test_eval_Accuracy_lab()

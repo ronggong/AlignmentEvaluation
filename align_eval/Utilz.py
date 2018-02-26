@@ -31,31 +31,45 @@ def get_duration_audio(filename):
         return duration
 
 
-def load_labeled_intervals(filename,filename_wav, delimiter=r'\s+'):
+
+def load_delimited_variants(filename, delimiter=r'\s+'):
+    '''
+    load from delimited file
+    in order to be able to change the converters arguments of load_delimieted  to handle , instead of . in floating point vals 
+
+    '''
+    converter_comma = lambda val:float(val.replace(',', '.')) # replace ',' by '.'
+    ends = None
+    try:
+        starts, ends, labels = load_delimited(filename, [converter_comma, converter_comma, str], delimiter) # start times and end times given
+    except Exception as e: # only start times given
+        labels, starts = load_delimited(filename, [str, converter_comma], delimiter)
+    return  starts, ends, labels
+
+def load_labeled_intervals(filename, delimiter=r'\s+'):
     '''
     overwrites https://github.com/craffel/mir_eval/blob/master/mir_eval/io.py#L208
-    in order to be able to change the converters arguments of load_delimieted  to handle , instead of . in floating point vals 
+    ends of intervals are not used later in evaluation, vut are needed for sanity check
+    
     '''
     # Use our universal function to load in the events
     
-    converter_comma = lambda val: float(val.replace(',', '.')) # replace ',' by '.'
-    try: # start times and end times given
-        starts, ends, labels = load_delimited(filename, [converter_comma, converter_comma, str],
-                                          delimiter)
-    except Exception, e: # only start times given
-        labels, starts   = load_delimited(filename, [str, converter_comma],
-                                          delimiter)
-    
-    starts,  labels = remove_dot_tokens(starts,  labels)
-    
-#     filename_wav = filename[:-9] +'.wav'  # remove .refs.lab and replace it with .wav. TODO make this logic clearer 
-#     filename_base =os.path.splitext(filename)[0]
-#     filename_wav = filename_base + '.wav'
-    if os.path.isfile(filename_wav):
+    starts, ends, labels = load_delimited_variants(filename, delimiter)
+    if ends is None: # add ends
+        
+        filename_base = remove_extension(filename); filename_wav = filename_base + '.wav'
+        if not os.path.isfile(filename_wav):
+            dir = ''
+            while not os.path.isfile(filename_wav):
+                dir = raw_input('cannot find {} \n Please enter folder where the wav file is:'.format(filename_wav))
+                filename_wav = os.path.join(dir, os.path.basename(filename_wav))
+        
         duration = get_duration_audio(filename_wav) # generate end timestamps from following start timestamps
-    else:
-        duration = starts[-1] + 1 # fake last word to be 1 sec long
-    ends = starts[1:]; ends = np.append(ends, duration) 
+#         duration = starts[-1] + 1 # fake last word to be 1 sec long
+        ends = starts[1:]; ends = np.append(ends, duration) 
+    
+    starts, ends, labels = remove_dot_tokens(starts, ends,  labels)
+    
     # Stack into an interval matrix
     intervals = np.array([starts, ends]).T
     # Validate them, but throw a warning in place of an error
@@ -66,14 +80,27 @@ def load_labeled_intervals(filename,filename_wav, delimiter=r'\s+'):
 
     return intervals, labels
 
-def remove_dot_tokens(starts,  labels):
+def remove_extension(URI):
+    '''
+    remove all extensions after dots completely
+    e.g. path/base.ext1.ext2 -> path/base 
+    '''
+    while True:
+        a1 = os.path.splitext(URI)[0]
+        if a1 == URI: break
+        else: URI = a1
+    return URI
+
+def remove_dot_tokens(starts, ends,  labels):
     starts_no_dots = []
+    ends_no_dots = []
     labels_no_dots = []
-    for start_label in zip(starts, labels):
-        if start_label[1] != '.' and start_label[1] != -1:
-            starts_no_dots.append(start_label[0])
-            labels_no_dots.append(start_label[1])
-    return np.array(starts_no_dots), labels_no_dots
+    for tuple_token in zip(starts, ends, labels):
+        if tuple_token[-1] != '.' and tuple_token[-1] != -1:
+            starts_no_dots.append(tuple_token[0])
+            ends_no_dots.append(tuple_token[1])
+            labels_no_dots.append(tuple_token[2])
+    return np.array(starts_no_dots), np.array(ends_no_dots), labels_no_dots
 
 def loadTextFile( pathToFile):
         '''
